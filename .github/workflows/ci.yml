@@ -1,82 +1,59 @@
-name: CI/CD Pipeline SpringBoot Angular MySQL
+- main
 
-on:
-  push:
-    branches:
-      - main
+permissions:
+  contents: read
 
 jobs:
-  build-and-deploy:
+  build-and-test:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Récupérer le code
-      - name: Checkout repository
+      # 1️⃣ Checkout source code
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2️⃣ Login Docker Hub
+      # 2️⃣ Login to Docker Hub
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
 
-      # 3️⃣ Build image Backend
-      - name: Build Backend Image
+      - name: Build Spring Boot app
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/springboot-app ./springboot/app
+          cd springboot/app
+          mvn clean package -DskipTests
 
-      # 4️⃣ Build image Frontend
-      - name: Build Frontend Image
+
+      # 3️⃣ Build backend image
+      - name: Build backend image
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/angular-app ./angular-app
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/backend:latest ./springboot/app
 
-      # 5️⃣ Push Backend
-      - name: Push Backend Image
+      # 4️⃣ Build frontend image
+      - name: Build frontend image
         run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/springboot-app
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/frontend:latest ./angular-app
 
-      # 6️⃣ Push Frontend
-      - name: Push Frontend Image
+      # 5️⃣ Push backend image
+      - name: Push backend image to Docker Hub
         run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/angular-app
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/backend:latest
 
-      # 7️⃣ Lancer Docker Compose (test)
-      - name: Run Docker Compose
+      # 6️⃣ Push frontend image
+      - name: Push frontend image to Docker Hub
         run: |
-          docker-compose up -d
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/frontend:latest
 
-      # 8️⃣ Vérifier conteneurs
-      - name: Check running containers
-        run: docker ps
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+      # 7️⃣ Start application (optional)
+      - name: Start application with Docker Compose
+        run: |
+          docker compose up -d
 
 
 
